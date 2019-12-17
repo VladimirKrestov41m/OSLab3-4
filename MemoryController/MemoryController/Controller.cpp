@@ -3,12 +3,16 @@
 #include<stdlib.h>
 #include<string>
 
-struct Position {
+using namespace std;
+
+struct Position
+{
 	short int pageAddress;
 	short int symbolAddress;
 };
 
-struct TLB {
+struct TLB
+{
 	short int PageNumber;
 	short int FrameNumber;
 } *TLB_Table;
@@ -20,19 +24,19 @@ int InitFiles();
 void InitMemory();
 void FreeResources();
 
+short int GetFrameFromVirtualMemory(unsigned short int, unsigned short int, short int);
 
 
 
 short int JumpOverCountByte(FILE*, int);
 
 short int GetByte(FILE*);
-short int CheckPageinphysicalMemory(unsigned short int, unsigned short int, short int);
 unsigned char GetSymbolFromPage(unsigned char*, short int);
 void resetPointer(short int);
 bool GetPageFromFile(FILE*, unsigned short int, short int, unsigned short int);
 
-short int currentItemOfTLB = 0, currentItemOfPageTable = 0, /*maxCurrentOfTLB = 0,*/ maxCurrentOfPageTable = 0;
-int currentItemOfphysicalMemory = 0, maxCurrentphysicalMemory = 0;
+short int currentItemOfTLB = 0, currentItemOfPageTable = 0;
+int currentItemOfphysicalMemory = 0;
 
 FILE* sourceFile, * addressesFile, * resultFile;
 unsigned short int _pageSize = 256;
@@ -43,9 +47,11 @@ unsigned short int TLB_Size = 16;
 
 short int myError = 0;
 Position pos;
-short int delta = 0;
 
-int main() {
+int main()
+{
+	short int frameNumber = 0;
+
 	if (InitFiles() == 1)
 	{
 		printf("File exception");
@@ -59,26 +65,26 @@ int main() {
 
 
 
-
-
-	/*maxCurrentOfTLB = TLB_Size;
-	maxCurrentOfPageTable = _pageTableSize;
-	maxCurrentphysicalMemory = _physicalMemorySize;*/
-
 	myError = pos.symbolAddress = GetByte(addressesFile);
 	myError = pos.pageAddress = GetByte(addressesFile);
 
-	while (myError != -1) {
-		
-		delta = CheckPageinphysicalMemory(TLB_Size, _pageTableSize, pos.pageAddress);
-		if (delta != -1) {
-			fputc(GetSymbolFromPage(&PhysicalMemory[delta], pos.symbolAddress), resultFile);
+	while (myError != -1)
+	{
+
+		frameNumber = GetFrameFromVirtualMemory(TLB_Size, _pageTableSize, pos.pageAddress);
+
+		if (frameNumber != -1)
+		{
+			fputc(GetSymbolFromPage(&PhysicalMemory[frameNumber], pos.symbolAddress), resultFile);
 		}
-		else {
-			if (GetPageFromFile(sourceFile, TLB_Size, pos.pageAddress, _pageSize)) {
+		else
+		{
+			if (GetPageFromFile(sourceFile, TLB_Size, pos.pageAddress, _pageSize))
+			{
 				fputc(GetSymbolFromPage(&PhysicalMemory[PageTable[pos.pageAddress]], pos.symbolAddress), resultFile);
 			}
-			else {
+			else
+			{
 				myError = -2;
 				break;
 			}
@@ -102,7 +108,7 @@ int main() {
 		printf("Memory addressing exception!\n");
 	if (myError == -2)
 		printf("Memory reading exception!\n");
-	
+
 	system("pause");
 	return 0;
 }
@@ -162,56 +168,34 @@ void FreeResources()
 	free(TLB_Table);
 }
 
-short int GetByte(FILE* f) {
-	if (!feof(f))
-		return getc(f);
-	else
-		return -1;
-}
-
-short int JumpOverCountByte(FILE* f, int count) {
-	for (int i = 0; i < count; i++) {
-		if (GetByte(f) == -1)
-			return -1;
-	}
-	return 0;
-}
-
-short int CheckPageinphysicalMemory(unsigned short int TLB_Size, unsigned short int sizeOfPageTable, short int number) {
-
+short int GetFrameFromVirtualMemory(unsigned short int TLB_Size, unsigned short int sizeOfPageTable, short int number)
+{
+	// Does TLB_Table contain page number?
 	for (int i = 0; i < TLB_Size; i++)
+	{
 		if (TLB_Table[i].PageNumber == number)
+		{
 			return TLB_Table[i].FrameNumber;
-	if (PageTable[number] != -1)
-		return PageTable[number];
-	return -1;
+		}
+	}
+
+	// Does PageTable contain page number?
+	return PageTable[number];
 }
 
-unsigned char GetSymbolFromPage(unsigned char* page, short int number) {
+unsigned char GetSymbolFromPage(unsigned char* page, short int number) 
+{
 	return page[number];
 }
 
-void resetPointer(short int position) {
-	for (int i = 0; i < _pageTableSize; i++)
-		if (PageTable[i] == position) {
-			PageTable[i] = -1;
-			break;
-		}
-	for (int i = 0; i < TLB_Size; i++)
-		if (TLB_Table[i].FrameNumber == position) {
-			TLB_Table[i].PageNumber = -1;
-			TLB_Table[i].FrameNumber = -1;
-			break;
-		}
-}
 
-short int findAFreeTLB() {
-	for (int i = 0; i < TLB_Size; i++)
-		if (TLB_Table[i].PageNumber == -1)
-			return i;
-		else - 1;
-}
-//Ќе затираютс€ ссылки удаленных данных из пам€ти
+
+
+
+
+
+
+
 bool GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int numberOfPage, unsigned short int sizeOfPage) {
 	fpos_t filePos = numberOfPage * sizeOfPage;
 	unsigned short int e = 0;
@@ -236,3 +220,56 @@ bool GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int numberOfPag
 		return false;
 	return true;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+short int GetByte(FILE* f) {
+	if (!feof(f))
+		return getc(f);
+	else
+		return -1;
+}
+
+short int JumpOverCountByte(FILE* f, int count) {
+	for (int i = 0; i < count; i++) {
+		if (GetByte(f) == -1)
+			return -1;
+	}
+	return 0;
+}
+
+void resetPointer(short int position) {
+	for (int i = 0; i < _pageTableSize; i++)
+		if (PageTable[i] == position) {
+			PageTable[i] = -1;
+			break;
+		}
+	for (int i = 0; i < TLB_Size; i++)
+		if (TLB_Table[i].FrameNumber == position) {
+			TLB_Table[i].PageNumber = -1;
+			TLB_Table[i].FrameNumber = -1;
+			break;
+		}
+}
+
+short int findAFreeTLB() {
+	for (int i = 0; i < TLB_Size; i++)
+		if (TLB_Table[i].PageNumber == -1)
+			return i;
+		else - 1;
+}
+

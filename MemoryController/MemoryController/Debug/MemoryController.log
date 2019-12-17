@@ -1,5 +1,5 @@
 ﻿  Controller.cpp
-D:\Учеба\2 курс\1 семестр\Алыкова\UC1\programs\MemoryController\MemoryController\Controller.cpp(229,76): warning C4267: =: преобразование из "size_t" в "unsigned short"; возможна потеря данных
-D:\Учеба\2 курс\1 семестр\Алыкова\UC1\programs\MemoryController\MemoryController\Controller.cpp(135): warning C4715: InitFiles: значение возвращается не при всех путях выполнения
-D:\Учеба\2 курс\1 семестр\Алыкова\UC1\programs\MemoryController\MemoryController\Controller.cpp(213): warning C4715: findAFreeTLB: значение возвращается не при всех путях выполнения
-  MemoryController.vcxproj -> D:\Учеба\2 курс\1 семестр\Алыкова\UC1\programs\MemoryController\Debug\MemoryController.exe
+D:\Учеба\2 курс\1 семестр\Алыкова\Dev\Lab 3-4\OSLab3-4\MemoryController\MemoryController\Controller.cpp(213,76): warning C4267: =: преобразование из "size_t" в "unsigned short"; возможна потеря данных
+D:\Учеба\2 курс\1 семестр\Алыкова\Dev\Lab 3-4\OSLab3-4\MemoryController\MemoryController\Controller.cpp(141): warning C4715: InitFiles: значение возвращается не при всех путях выполнения
+D:\Учеба\2 курс\1 семестр\Алыкова\Dev\Lab 3-4\OSLab3-4\MemoryController\MemoryController\Controller.cpp(274): warning C4715: findAFreeTLB: значение возвращается не при всех путях выполнения
+  MemoryController.vcxproj -> D:\Учеба\2 курс\1 семестр\Алыкова\Dev\Lab 3-4\OSLab3-4\MemoryController\Debug\MemoryController.exe
