@@ -73,15 +73,11 @@ int main()
 
 		frameNumber = GetFrameFromVirtualMemory(TLB_Size, _pageTableSize, pos.pageAddress);
 
-		if (frameNumber != -1)
-		{
-			fputc(GetSymbolFromPage(&PhysicalMemory[frameNumber], pos.symbolAddress), resultFile);
-		}
-		else
+		if (frameNumber == -1)
 		{
 			if (GetPageFromFile(sourceFile, TLB_Size, pos.pageAddress, _pageSize))
 			{
-				fputc(GetSymbolFromPage(&PhysicalMemory[PageTable[pos.pageAddress]], pos.symbolAddress), resultFile);
+				frameNumber = PageTable[pos.pageAddress];
 			}
 			else
 			{
@@ -89,6 +85,15 @@ int main()
 				break;
 			}
 		}
+
+		fputc(GetSymbolFromPage(&PhysicalMemory[frameNumber], pos.symbolAddress), resultFile);
+
+
+
+
+
+
+
 
 		if (JumpOverCountByte(addressesFile, 2) == -1)
 			break;
