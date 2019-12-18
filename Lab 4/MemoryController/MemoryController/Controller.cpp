@@ -3,24 +3,33 @@
 #include<stdlib.h>
 #include<string>
 
+#define T 100
+
 struct TLB
 {
 	short int PageNumber;
 	short int FrameNumber;
 } *TLB_Table;
 
+struct Page
+{
+	int LastTime;
+	bool R;
+	short int Frame;
+} *PageTable;
+
 unsigned char* PhysicalMemory;
-short int* PageTable;
 short int _pageAddress;
 short int _symbolAddress;
 
 int InitFiles();
 void InitMemory();
 void FreeResources();
+void ResetR_and_Times();
 short int GetFrameFromVirtualMemory(unsigned short int, unsigned short int, short int);
 unsigned char GetSymbolFromPage(unsigned char*, short int);
 void GetPageFromFile(FILE*, unsigned short int, short int, unsigned short int);
-void RemoveFrame(short int position);
+void RemoveFrame(short int);
 short int GetSymbol(FILE*);
 void SkipSymbols(FILE*, int);
 short int _currentTLBPos = 0,
@@ -48,14 +57,21 @@ int main()
 	_symbolAddress = GetSymbol(addressesFile);
 	_pageAddress = GetSymbol(addressesFile);
 
+	int timer = 0;
+
 	while (_pageAddress != EOF)
 	{
+		if (timer % T == 0)
+		{
+			ResetR_and_Times();
+		}
+
 		frameNumber = GetFrameFromVirtualMemory(_TLB_Size, _pageTableSize, _pageAddress);
 
 		if (frameNumber == -1)
 		{
 			GetPageFromFile(sourceFile, _TLB_Size, _pageAddress, _pageSize);
-			frameNumber = PageTable[_pageAddress];
+			frameNumber = PageTable[_pageAddress].Frame;
 		}
 
 		fputc(GetSymbolFromPage(&PhysicalMemory[frameNumber], _symbolAddress), resultFile);
@@ -64,6 +80,8 @@ int main()
 
 		_symbolAddress = GetSymbol(addressesFile);
 		_pageAddress = GetSymbol(addressesFile);
+
+		timer++;
 	}
 
 	printf("\n\nProcess ended.\n");
@@ -103,9 +121,11 @@ void InitMemory()
 	PhysicalMemory = (unsigned char*)malloc((_pageSize * _physicalMemorySize * sizeof(unsigned char)) + 1);
 	memset(PhysicalMemory, '\0', (_pageSize * _physicalMemorySize * sizeof(unsigned char)) + 1);
 
-	PageTable = (short int*)malloc(_pageTableSize * sizeof(short int));
+	PageTable = (Page*)malloc(_pageTableSize * sizeof(Page));
 	for (int i = 0; i < _pageTableSize; i++) {
-		PageTable[i] = -1;
+		PageTable[i].Frame = -1;
+		PageTable[i].LastTime = 0;
+		PageTable[i].R = false;
 	}
 
 	TLB_Table = (TLB*)malloc(_TLB_Size * sizeof(TLB));
@@ -126,6 +146,11 @@ void FreeResources()
 	free(TLB_Table);
 }
 
+void ResetR_and_Times()
+{
+	//PageTable
+}
+
 short int GetFrameFromVirtualMemory(unsigned short int TLB_Size, unsigned short int sizeOfPageTable, short int number)
 {
 	// Does TLB_Table contain page number?
@@ -138,7 +163,7 @@ short int GetFrameFromVirtualMemory(unsigned short int TLB_Size, unsigned short 
 	}
 
 	// Does PageTable contain page number?
-	return PageTable[number];
+	return PageTable[number].Frame;
 }
 
 unsigned char GetSymbolFromPage(unsigned char* page, short int number)
@@ -170,7 +195,7 @@ void GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int pageNumber,
 	position = _currentPhysicalMemoryPos * pageSize;
 	RemoveFrame(position);
 	fread(&PhysicalMemory[position], sizeof(unsigned char), pageSize, f);
-	PageTable[pageNumber] = position;
+	PageTable[pageNumber].Frame = position;
 	TLB_Table[_currentTLBPos].PageNumber = pageNumber;
 	TLB_Table[_currentTLBPos].FrameNumber = position;
 	_currentTLBPos++;
@@ -181,9 +206,9 @@ void RemoveFrame(short int position)
 {
 	for (int i = 0; i < _pageTableSize; i++)
 	{
-		if (PageTable[i] == position)
+		if (PageTable[i].Frame == position)
 		{
-			PageTable[i] = -1;
+			PageTable[i].Frame = -1;
 			break;
 		}
 	}
