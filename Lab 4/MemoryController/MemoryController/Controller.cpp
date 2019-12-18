@@ -26,10 +26,11 @@ int InitFiles();
 void InitMemory();
 void FreeResources();
 void ResetR_and_Times();
+int GetOldItem(Page*);
 short int GetFrameFromVirtualMemory(unsigned short int, unsigned short int, short int);
 unsigned char GetSymbolFromPage(unsigned char*, short int);
-void GetPageFromFile(FILE*, unsigned short int, short int, unsigned short int);
-void RemoveFrame(short int);
+short int GetPageFromFile(FILE*, unsigned short int, short int, unsigned short int);
+void RemoveTLBFrame(short int);
 short int GetSymbol(FILE*);
 void SkipSymbols(FILE*, int);
 short int _currentTLBPos = 0,
@@ -39,6 +40,8 @@ unsigned short int _pageSize = 256;
 unsigned short int _physicalMemorySize = 128;
 unsigned short int _pageTableSize = 256;
 unsigned short int _TLB_Size = 16;
+
+int _timer = 0;
 
 int main()
 {
@@ -57,11 +60,9 @@ int main()
 	_symbolAddress = GetSymbol(addressesFile);
 	_pageAddress = GetSymbol(addressesFile);
 
-	int timer = 0;
-
 	while (_pageAddress != EOF)
 	{
-		if (timer % T == 0)
+		if (_timer % T == 0)
 		{
 			ResetR_and_Times();
 		}
@@ -70,9 +71,11 @@ int main()
 
 		if (frameNumber == -1)
 		{
-			GetPageFromFile(sourceFile, _TLB_Size, _pageAddress, _pageSize);
-			frameNumber = PageTable[_pageAddress].Frame;
+			frameNumber = GetPageFromFile(sourceFile, _TLB_Size, _pageAddress, _pageSize);
 		}
+
+		// Reset R for the page
+		PageTable[_pageAddress].R = false;
 
 		fputc(GetSymbolFromPage(&PhysicalMemory[frameNumber], _symbolAddress), resultFile);
 
@@ -81,7 +84,7 @@ int main()
 		_symbolAddress = GetSymbol(addressesFile);
 		_pageAddress = GetSymbol(addressesFile);
 
-		timer++;
+		_timer++;
 	}
 
 	printf("\n\nProcess ended.\n");
@@ -148,7 +151,11 @@ void FreeResources()
 
 void ResetR_and_Times()
 {
-	//PageTable
+	for (int i = 0; i < _pageTableSize; i++)
+	{
+		PageTable[i].LastTime = -1;
+		PageTable[i].R = false;
+	}
 }
 
 short int GetFrameFromVirtualMemory(unsigned short int TLB_Size, unsigned short int sizeOfPageTable, short int number)
@@ -163,6 +170,12 @@ short int GetFrameFromVirtualMemory(unsigned short int TLB_Size, unsigned short 
 	}
 
 	// Does PageTable contain page number?
+	if (PageTable[number].Frame != -1)
+	{
+		PageTable[number].LastTime = _timer;
+		PageTable[number].R = true;
+	}
+
 	return PageTable[number].Frame;
 }
 
@@ -173,14 +186,13 @@ unsigned char GetSymbolFromPage(unsigned char* page, short int number)
 	return result;
 }
 
-void GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int pageNumber, unsigned short int pageSize)
+short int GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int pageNumber, unsigned short int pageSize)
 {
 	fpos_t filePos = pageNumber * pageSize;
 	rewind(f);
 	fsetpos(f, &filePos);
 
 	short int position = 0;
-	short int goToFreeTLB = -1;
 
 	if (_currentPhysicalMemoryPos > _physicalMemorySize)
 	{
@@ -192,27 +204,50 @@ void GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int pageNumber,
 		_currentTLBPos = 0;
 	}
 
+	int index = GetOldItem(PageTable);
+
 	position = _currentPhysicalMemoryPos * pageSize;
-	RemoveFrame(position);
+	RemoveTLBFrame(position);
 	fread(&PhysicalMemory[position], sizeof(unsigned char), pageSize, f);
-	PageTable[pageNumber].Frame = position;
+	PageTable[index].Frame = position;
+	PageTable[index].LastTime = _timer;
 	TLB_Table[_currentTLBPos].PageNumber = pageNumber;
 	TLB_Table[_currentTLBPos].FrameNumber = position;
 	_currentTLBPos++;
 	_currentPhysicalMemoryPos++;
+
+	return position;
 }
 
-void RemoveFrame(short int position)
+int GetOldItem(Page* pageTable)
 {
+	int maxAge = 0;
+	int currentIndex = -1;
+
 	for (int i = 0; i < _pageTableSize; i++)
 	{
-		if (PageTable[i].Frame == position)
+		if (pageTable[i].R)
 		{
-			PageTable[i].Frame = -1;
-			break;
+			continue;
+		}
+
+		if (_timer - pageTable[i].LastTime > maxAge&& pageTable[i].LastTime != -1)
+		{
+			currentIndex = i;
+			maxAge = _timer - pageTable[i].LastTime;
+		}
+
+		if (pageTable[i].LastTime == -1)
+		{
+			currentIndex = i;
 		}
 	}
 
+	return currentIndex;
+}
+
+void RemoveTLBFrame(short int position)
+{
 	for (int i = 0; i < _TLB_Size; i++)
 	{
 		if (TLB_Table[i].FrameNumber == position)

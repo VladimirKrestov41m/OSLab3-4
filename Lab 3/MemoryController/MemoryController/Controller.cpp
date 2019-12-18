@@ -155,7 +155,6 @@ void GetPageFromFile(FILE* f, unsigned short int TLB_Size, short int pageNumber,
 	fsetpos(f, &filePos);
 
 	short int position = 0;
-	short int goToFreeTLB = -1;
 
 	if (_currentPhysicalMemoryPos > _physicalMemorySize)
 	{
